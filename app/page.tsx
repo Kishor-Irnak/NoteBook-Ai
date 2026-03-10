@@ -89,7 +89,11 @@ type RelatedSource = {
   title: string
   url: string
   description: string
-  icon: string
+  icon?: string
+  videoId?: string
+  domain?: string
+  siteName?: string
+  channel?: string
 }
 type ChartData = {
   type: string
@@ -321,6 +325,10 @@ export default function NotebookLM() {
     []
   )
   const [isGeneratingCharts, setIsGeneratingCharts] = useState(false)
+  const [researchSummary, setResearchSummary] = usePersistedState<string>(
+    "notebook-researchSummary",
+    ""
+  )
 
   // Audio Overview
   const [audioLines, setAudioLines] = useState<
@@ -682,6 +690,10 @@ export default function NotebookLM() {
       return
     }
     setIsDiscoveringSources(true)
+    // Clear old cached results immediately so stale data disappears
+    setRelatedSources([])
+    setSourceTopic("")
+    setResearchSummary("")
     try {
       const res = await fetch("/api/discover-sources", {
         method: "POST",
@@ -694,12 +706,15 @@ export default function NotebookLM() {
         }),
       })
       const data = await res.json()
-      if (data.sources) {
+      if (data.error) {
+        alert(`Search error: ${data.error}`)
+      } else if (data.sources) {
         setRelatedSources(data.sources)
         setSourceTopic(data.topic || "")
+        setResearchSummary(data.researchSummary || "")
       }
     } catch {
-      alert("Failed to discover sources.")
+      alert("Failed to search. Please check your internet connection.")
     }
     setIsDiscoveringSources(false)
   }
@@ -741,7 +756,7 @@ export default function NotebookLM() {
           onClick={() => setActiveNote(null)}
         >
           <div
-            className="flex max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+            className="flex h-full max-h-[82vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-gray-100 p-5">
@@ -765,17 +780,17 @@ export default function NotebookLM() {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            <ScrollArea className="min-h-0 flex-1 p-6 transition-all duration-300">
               {activeNote.isTimeline &&
               activeNote.timelineData &&
               activeNote.timelineData.length > 0 ? (
                 <TimelineView events={activeNote.timelineData} />
               ) : (
-                <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:leading-relaxed prose-p:text-gray-700 prose-pre:border prose-pre:border-gray-200 prose-pre:bg-gray-100">
+                <div className="prose prose-sm max-w-none pb-20 prose-headings:text-gray-900 prose-p:leading-relaxed prose-p:text-gray-700 prose-pre:border prose-pre:border-gray-200 prose-pre:bg-gray-100">
                   <ReactMarkdown>{activeNote.content}</ReactMarkdown>
                 </div>
               )}
-            </div>
+            </ScrollArea>
           </div>
         </div>
       )}
@@ -841,7 +856,7 @@ export default function NotebookLM() {
       <main className="flex flex-1 gap-3 overflow-hidden p-2 pt-0 md:p-4 md:pt-0">
         {/* Left Sidebar - Sources */}
         {isLeftOpen && (
-          <aside className="hidden w-[320px] shrink-0 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm md:flex">
+          <aside className="hidden h-full w-[320px] shrink-0 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm md:flex">
             <div className="flex items-center justify-between px-5 py-4 pb-3">
               <h2 className="text-base font-semibold text-gray-900">Sources</h2>
               <div className="flex items-center gap-0.5 text-gray-400">
@@ -1013,19 +1028,23 @@ export default function NotebookLM() {
             )}
           </div>
 
-          <ScrollArea className="min-h-0 flex-1">
-            <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6 pb-6 md:px-8">
+          <ScrollArea className="min-h-0 flex-1 scroll-smooth px-4">
+            <div className="flex flex-col gap-5 py-4">
               {messages.length === 0 && (
-                <>
-                  <div>
-                    <div className="mb-4 text-5xl">🔬</div>
-                    <h1 className="mb-1 text-3xl font-light tracking-tight text-gray-900">
-                      Notebook AI
-                    </h1>
-                    <p className="text-xs font-medium text-gray-400">
-                      {selectedSources.length} source
-                      {selectedSources.length !== 1 ? "s" : ""} selected
-                    </p>
+                <div className="flex flex-col gap-5 py-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#f0f4f9] text-gray-800">
+                      <BookOpen className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+                        Notebook AI
+                      </h1>
+                      <p className="text-xs font-medium text-gray-400">
+                        {selectedSources.length} source
+                        {selectedSources.length !== 1 ? "s" : ""} selected
+                      </p>
+                    </div>
                   </div>
                   <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-[15px] leading-relaxed text-gray-600">
                     {selectedSources.length > 0
@@ -1063,7 +1082,7 @@ export default function NotebookLM() {
                       </Card>
                     ))}
                   </div>
-                </>
+                </div>
               )}
 
               {messages.map((m) => (
@@ -1084,36 +1103,28 @@ export default function NotebookLM() {
                         <ReactMarkdown>{m.content}</ReactMarkdown>
                       </div>
                     ) : (
-                      <p>{m.content}</p>
+                      m.content
                     )}
                   </div>
-                  {m.role === "user" && (
-                    <Avatar className="mt-1 ml-2.5 h-7 w-7 shrink-0">
-                      <AvatarImage
-                        src="https://github.com/shadcn.png"
-                        alt="User"
-                      />
-                      <AvatarFallback>U</AvatarFallback>
-                    </Avatar>
-                  )}
                 </div>
               ))}
 
               {isChatLoading && (
                 <div className="flex justify-start">
-                  <div className="mr-2.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                  <div className="mt-1 mr-2.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
                     N
                   </div>
-                  <div className="flex items-center gap-2 rounded-2xl rounded-bl-[6px] border border-gray-100 bg-gray-50 px-4 py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                    <span className="text-sm text-gray-400">Thinking...</span>
+                  <div className="flex max-w-[80%] items-center gap-2 rounded-2xl rounded-bl-[6px] border border-gray-100 bg-gray-50 px-4 py-3">
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-400" />
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-400 [animation-delay:0.2s]" />
+                    <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-400 [animation-delay:0.4s]" />
                   </div>
                 </div>
               )}
 
               {chatError && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-                  ⚠️ {chatError}
+                  {chatError}
                 </div>
               )}
               <div ref={chatEndRef} />
@@ -1196,7 +1207,7 @@ export default function NotebookLM() {
 
         {/* Right Sidebar */}
         {isRightOpen && (
-          <aside className="hidden w-[320px] shrink-0 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm lg:flex">
+          <aside className="hidden h-full w-[320px] shrink-0 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm lg:flex">
             {/* Tab Header */}
             <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-0">
               <div className="flex items-center gap-1 rounded-xl bg-gray-100 p-1">
@@ -1239,7 +1250,7 @@ export default function NotebookLM() {
                         <Info className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                    <Card className="flex flex-col gap-3 rounded-2xl border-blue-100 border-gray-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3.5 shadow-none">
+                    <Card className="flex flex-col gap-3 rounded-2xl border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 p-3.5 shadow-none">
                       <div className="flex items-start gap-3">
                         <div
                           className={`shrink-0 rounded-xl bg-white p-2 shadow-sm ${isAudioPlaying ? "text-blue-600" : "text-blue-500"}`}
@@ -1520,13 +1531,12 @@ export default function NotebookLM() {
               {/* === SOURCES TAB === */}
               {rightTab === "sources" && (
                 <div className="flex flex-col gap-4 p-4 pb-8">
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1">
                     <h3 className="text-sm font-semibold text-gray-800">
                       Related Resources
                     </h3>
                     <p className="text-[11px] text-gray-500">
-                      AI-discovered sources: websites, courses, GitHub repos &
-                      more
+                      AI-discovered sources from across the web
                     </p>
                   </div>
 
@@ -1546,16 +1556,33 @@ export default function NotebookLM() {
                   </Button>
 
                   {sourceTopic && (
-                    <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2">
-                      <p className="text-[11px] font-medium text-indigo-700">
+                    <div className="flex items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2">
+                      <Globe className="h-3.5 w-3.5 shrink-0 text-indigo-500" />
+                      <p className="truncate text-[11px] font-medium text-indigo-700">
                         Topic: {sourceTopic}
+                      </p>
+                    </div>
+                  )}
+
+                  {researchSummary && (
+                    <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/50 to-white p-4 shadow-sm">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-indigo-600" />
+                        <h4 className="text-[12px] font-bold tracking-tight text-indigo-900 uppercase">
+                          Research Overview
+                        </h4>
+                      </div>
+                      <p className="text-[12px] leading-relaxed text-gray-700 italic">
+                        "{researchSummary}"
                       </p>
                     </div>
                   )}
 
                   {relatedSources.length === 0 && !isDiscoveringSources && (
                     <div className="flex flex-col items-center gap-3 py-10">
-                      <Globe className="h-10 w-10 text-gray-200" />
+                      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100">
+                        <Globe className="h-8 w-8 text-gray-300" />
+                      </div>
                       <p className="text-center text-[12px] leading-relaxed text-gray-400">
                         Click the button above to discover
                         <br />
@@ -1564,42 +1591,183 @@ export default function NotebookLM() {
                     </div>
                   )}
 
-                  {relatedSources.length > 0 && (
-                    <div className="flex flex-col gap-2.5">
-                      {relatedSources.map((src, i) => (
-                        <a
-                          key={i}
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group flex items-start gap-3 rounded-xl border border-gray-100 p-3 transition-all hover:border-indigo-200 hover:bg-indigo-50/30"
-                        >
-                          <div
-                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${getResourceBg(src.type)}`}
-                          >
-                            {getResourceIcon(src.type)}
-                          </div>
-                          <div className="flex-1 overflow-hidden">
-                            <p className="truncate text-[13px] font-medium text-gray-900 transition-colors group-hover:text-indigo-700">
-                              {src.title}
-                            </p>
-                            <p className="mt-0.5 line-clamp-2 text-[10px] leading-relaxed text-gray-500">
-                              {src.description}
-                            </p>
-                            <div className="mt-1 flex items-center gap-1">
-                              <Badge
-                                variant="outline"
-                                className="h-4 rounded-full border-gray-200 px-1.5 text-[9px] font-normal capitalize"
-                              >
-                                {src.type}
-                              </Badge>
+                  {relatedSources.length > 0 &&
+                    (() => {
+                      const youtubeItems = relatedSources.filter(
+                        (s) => s.type === "youtube"
+                      )
+                      const otherItems = relatedSources.filter(
+                        (s) => s.type !== "youtube"
+                      )
+                      return (
+                        <div className="flex flex-col gap-4">
+                          {/* YouTube Section */}
+                          {youtubeItems.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <Youtube className="h-3.5 w-3.5 text-red-500" />
+                                <h4 className="text-[11px] font-semibold tracking-wide text-gray-500 uppercase">
+                                  YouTube
+                                </h4>
+                              </div>
+                              <div className="flex flex-col gap-2.5">
+                                {youtubeItems.map((src, i) => (
+                                  <a
+                                    key={i}
+                                    href={src.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group flex flex-col overflow-hidden rounded-xl border border-gray-100 bg-white transition-all hover:border-red-200 hover:shadow-md"
+                                  >
+                                    {/* Thumbnail */}
+                                    <div
+                                      className="relative w-full overflow-hidden bg-gray-100"
+                                      style={{ aspectRatio: "16/9" }}
+                                    >
+                                      {src.videoId ? (
+                                        <img
+                                          src={`https://img.youtube.com/vi/${src.videoId}/mqdefault.jpg`}
+                                          alt={src.title}
+                                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                          onError={(e) => {
+                                            ;(
+                                              e.target as HTMLImageElement
+                                            ).src =
+                                              `https://img.youtube.com/vi/${src.videoId}/default.jpg`
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center">
+                                          <Youtube className="h-8 w-8 text-red-400" />
+                                        </div>
+                                      )}
+                                      {/* Play overlay */}
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-all group-hover:bg-black/20">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600/90 opacity-0 shadow-lg transition-all group-hover:scale-110 group-hover:opacity-100">
+                                          <Play className="ml-0.5 h-5 w-5 fill-white text-white" />
+                                        </div>
+                                      </div>
+                                      {/* Duration badge area */}
+                                      <div className="absolute right-1.5 bottom-1.5 rounded bg-black/75 px-1.5 py-0.5">
+                                        <span className="text-[9px] font-medium text-white">
+                                          YouTube
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {/* Info */}
+                                    <div className="p-2.5">
+                                      <p className="line-clamp-2 text-[12px] leading-tight font-semibold text-gray-900 group-hover:text-red-700">
+                                        {src.title}
+                                      </p>
+                                      {src.channel && (
+                                        <p className="mt-1 flex items-center gap-1 text-[10px] text-gray-400">
+                                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-400"></span>
+                                          {src.channel}
+                                        </p>
+                                      )}
+                                      <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-gray-500">
+                                        {src.description}
+                                      </p>
+                                    </div>
+                                  </a>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                          <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-300 transition-colors group-hover:text-indigo-400" />
-                        </a>
-                      ))}
-                    </div>
-                  )}
+                          )}
+
+                          {/* Other Resources */}
+                          {otherItems.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <Globe className="h-3.5 w-3.5 text-indigo-500" />
+                                <h4 className="text-[11px] font-semibold tracking-wide text-gray-500 uppercase">
+                                  Web Resources
+                                </h4>
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                {otherItems.map((src, i) => {
+                                  const favicon = src.domain
+                                    ? `https://www.google.com/s2/favicons?sz=32&domain=${src.domain}`
+                                    : null
+                                  const typeColors: Record<string, string> = {
+                                    github:
+                                      "border-gray-200 hover:border-gray-400",
+                                    course:
+                                      "border-purple-100 hover:border-purple-300",
+                                    documentation:
+                                      "border-blue-100 hover:border-blue-300",
+                                    book: "border-amber-100 hover:border-amber-300",
+                                    website:
+                                      "border-gray-100 hover:border-indigo-300",
+                                  }
+                                  const typeBadgeColors: Record<
+                                    string,
+                                    string
+                                  > = {
+                                    github: "bg-gray-100 text-gray-700",
+                                    course: "bg-purple-50 text-purple-700",
+                                    documentation: "bg-blue-50 text-blue-700",
+                                    book: "bg-amber-50 text-amber-700",
+                                    website: "bg-indigo-50 text-indigo-700",
+                                  }
+                                  return (
+                                    <a
+                                      key={i}
+                                      href={src.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`group flex items-start gap-3 rounded-xl border bg-white p-3 transition-all hover:shadow-md ${typeColors[src.type] || "border-gray-100 hover:border-indigo-300"}`}
+                                    >
+                                      {/* Favicon / Icon */}
+                                      <div
+                                        className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg ${getResourceBg(src.type)}`}
+                                      >
+                                        {favicon ? (
+                                          <img
+                                            src={favicon}
+                                            alt=""
+                                            className="h-5 w-5 object-contain"
+                                            onError={(e) => {
+                                              ;(
+                                                e.target as HTMLImageElement
+                                              ).style.display = "none"
+                                            }}
+                                          />
+                                        ) : (
+                                          getResourceIcon(src.type)
+                                        )}
+                                      </div>
+                                      {/* Text */}
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-start justify-between gap-1">
+                                          <p className="line-clamp-1 text-[12px] leading-snug font-semibold text-gray-900 group-hover:text-indigo-700">
+                                            {src.title}
+                                          </p>
+                                          <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 text-gray-300 group-hover:text-indigo-400" />
+                                        </div>
+                                        {src.siteName && (
+                                          <p className="mt-0.5 text-[10px] text-gray-400">
+                                            {src.siteName}
+                                          </p>
+                                        )}
+                                        <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-gray-500">
+                                          {src.description}
+                                        </p>
+                                        <span
+                                          className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[9px] font-medium capitalize ${typeBadgeColors[src.type] || "bg-gray-100 text-gray-600"}`}
+                                        >
+                                          {src.type}
+                                        </span>
+                                      </div>
+                                    </a>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                 </div>
               )}
 
@@ -1698,8 +1866,8 @@ export default function NotebookLM() {
                               outerRadius={75}
                               paddingAngle={3}
                               dataKey="value"
-                              label={({ name, percent }) =>
-                                `${name} ${(percent * 100).toFixed(0)}%`
+                              label={({ name, percent }: any) =>
+                                `${name ?? ""} ${((percent ?? 0) * 100).toFixed(0)}%`
                               }
                               labelLine={false}
                               fontSize={9}
