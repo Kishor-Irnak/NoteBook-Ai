@@ -70,6 +70,7 @@ export async function POST(req: Request) {
       tools: {
         googleSearch: google.tools.googleSearch({}),
       },
+      // @ts-ignore
       maxSteps: 5,
       prompt: `You are a research assistant. Use Google Search to find the best real, currently-existing learning resources about the topic in this study material.
       
