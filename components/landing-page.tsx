@@ -1,7 +1,6 @@
-"use client"
-
 import React from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { 
   BookOpen, 
   Sparkles, 
@@ -40,8 +39,15 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4">
         <div className="bg-[#F2EFE9]/90 backdrop-blur-md hard-shadow rounded-full px-2 py-2 flex items-center gap-2 max-w-2xl w-full justify-between transition-all">
-          <Link href="/" className="flex items-center gap-3 bg-[#1A261D] text-[#F2EFE9] px-4 py-2 rounded-full hover:bg-rose-600 transition-colors group">
-            <span className="font-serif italic font-bold text-xl group-hover:rotate-12 transition-transform block">N</span>
+          <Link href="/" className="flex items-center gap-3 bg-[#1A261D] text-[#F2EFE9] px-2 pr-4 py-1.5 rounded-full hover:bg-rose-600 transition-colors group">
+            <div className="relative w-10 h-10 group-hover:rotate-12 transition-transform">
+              <Image 
+                src="https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png" 
+                alt="Logo" 
+                fill 
+                className="object-contain"
+              />
+            </div>
             <span className="font-bold tracking-tight text-sm">Notebook AI</span>
           </Link>
           
@@ -124,21 +130,26 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Marquee Banner */}
       <div className="relative py-12 bg-[#3D6B4F] -rotate-1 scale-105 border-y-4 border-[#1A261D] z-20 overflow-hidden shadow-lg">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-        <div className="flex animate-marquee whitespace-nowrap">
+        <div className="flex animate-marquee whitespace-nowrap items-center">
           <span className="text-4xl md:text-5xl font-black text-[#F2EFE9] px-8 uppercase flex items-center gap-6">
             Intelligent Summaries <Sparkles className="text-[#C9E265]" fill="currentColor" /> 
             Source Analysis <Brain className="text-[#FF6B4A]" fill="currentColor" />
             Audio Conversations <AudioLines className="text-[#9D8BB5]" />
-            Notebook AI <BookOpen className="text-[#C9E265]" />
+            <div className="relative w-12 h-12">
+              <Image src="https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png" alt="N" fill className="object-contain" />
+            </div>
+            Notebook AI
           </span>
           <span className="text-4xl md:text-5xl font-black text-[#F2EFE9] px-8 uppercase flex items-center gap-6">
             Intelligent Summaries <Sparkles className="text-[#C9E265]" fill="currentColor" /> 
             Source Analysis <Brain className="text-[#FF6B4A]" fill="currentColor" />
             Audio Conversations <AudioLines className="text-[#9D8BB5]" />
-            Notebook AI <BookOpen className="text-[#C9E265]" />
+            <div className="relative w-12 h-12">
+              <Image src="https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png" alt="N" fill className="object-contain" />
+            </div>
+            Notebook AI
           </span>
         </div>
       </div>
@@ -234,8 +245,13 @@ export default function LandingPage() {
 
         <div className="max-w-4xl mx-auto text-center relative z-10 rounded-3xl border-4 border-[#1A261D] p-8 md:p-16 bg-[#F2EFE9] hard-shadow shadow-[12px_12px_0px_0px_#1A261D]">
           <div className="mb-6 flex justify-center">
-            <div className="w-20 h-20 bg-[#C9E265] rounded-full border-2 border-[#1A261D] flex items-center justify-center text-[#1A261D] animate-float">
-              <BookOpen size={40} />
+            <div className="relative w-20 h-20 bg-[#C9E265] rounded-full border-2 border-[#1A261D] flex items-center justify-center animate-float">
+              <Image 
+                src="https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png" 
+                alt="Logo" 
+                fill 
+                className="object-contain p-4"
+              />
             </div>
           </div>
           
@@ -260,8 +276,15 @@ export default function LandingPage() {
       <footer className="bg-[#1A261D] text-[#F2EFE9] pt-20 pb-10 px-6">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="col-span-1 md:col-span-2">
-            <Link href="/" className="text-3xl font-black tracking-tighter text-[#F2EFE9] flex items-center gap-2 mb-6 group w-fit">
-              <span className="w-10 h-10 rounded-lg bg-[#C9E265] text-[#1A261D] border-2 border-[#F2EFE9] flex items-center justify-center font-serif italic text-xl group-hover:rotate-12 transition-transform">N</span>
+            <Link href="/" className="text-3xl font-black tracking-tighter text-[#F2EFE9] flex items-center gap-3 mb-6 group w-fit">
+              <div className="relative w-12 h-12 bg-[#C9E265] rounded-xl border-2 border-[#F2EFE9] group-hover:rotate-12 transition-transform overflow-hidden">
+                <Image 
+                  src="https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png" 
+                  alt="Logo" 
+                  fill 
+                  className="object-contain p-1.5"
+                />
+              </div>
               Notebook AI
             </Link>
             <p className="text-[#9D8BB5] max-w-sm text-lg font-medium leading-relaxed">

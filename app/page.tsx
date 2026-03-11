@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth"
 import { useRouter } from "next/navigation"
 import { BookOpen } from "lucide-react"
 import LandingPage from "@/components/landing-page"
+import Image from "next/image"
 
 export default function RootPage() {
   const { user, loading: authLoading } = useAuth()
@@ -28,7 +29,9 @@ export default function RootPage() {
           <div className="relative mb-10 group">
             <div className="absolute -inset-4 bg-rose-500/10 rounded-full blur-xl group-hover:bg-rose-500/20 transition-all duration-1000 animate-pulse"></div>
             <div className="relative flex items-center justify-center w-20 h-20 bg-white border-2 border-[#1A261D] hard-shadow rounded-2xl animate-float">
-              <BookOpen className="w-10 h-10 text-rose-600" />
+              <div className="relative w-12 h-12">
+                <Image src="https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png" alt="Logo" fill className="object-contain" />
+              </div>
             </div>
           </div>
 

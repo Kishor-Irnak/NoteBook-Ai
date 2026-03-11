@@ -15,7 +15,7 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Loader2, BookOpen } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import Image from "next/image"
 
 export function SignupForm({
@@ -55,10 +55,15 @@ export function SignupForm({
         <CardContent className="grid p-0 md:grid-cols-2">
           <form onSubmit={handleRegister} className="p-6 md:p-8 flex flex-col justify-center">
             <FieldGroup className="gap-5">
-              <div className="flex flex-col items-center gap-2 text-center mb-1">
-                <span className="brand-icon">
-                  <BookOpen className="h-6 w-6" />
-                </span>
+              <div className="flex flex-col items-center gap-2 text-center mb-2">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F2EFE9] border-2 border-[#1A261D] hard-shadow relative overflow-hidden">
+                  <Image 
+                    src="https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png" 
+                    alt="Logo" 
+                    fill 
+                    className="object-contain p-1.5"
+                  />
+                </div>
                 <h1 className="text-3xl font-bold tracking-tight">Create account</h1>
                 <p className="text-sm text-balance text-muted-foreground">
                   Join Notebook AI to organize your thoughts

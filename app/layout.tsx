@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { Geist_Mono, Inter } from "next/font/google"
 
 import "./globals.css"
@@ -10,6 +11,16 @@ const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+
+export const metadata: Metadata = {
+  title: "Notebook AI",
+  description: "Your intelligent research workspace grounded in your sources.",
+  icons: {
+    icon: "https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png",
+    shortcut: "https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png",
+    apple: "https://i.postimg.cc/TwNwrGCT/n-removebg-preview.png",
+  },
+}
 
 export default function RootLayout({
   children,
