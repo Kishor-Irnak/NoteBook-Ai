@@ -2,6 +2,20 @@
 import React, { useState, useRef, useEffect } from "react"
 import ReactMarkdown from "react-markdown"
 import {
+  subscribeToNotebook,
+  writeSources,
+  writeMessages,
+  writeNotes,
+  writeRelatedSources,
+  writeChartData,
+  writeAudio,
+  type NotebookData,
+} from "@/lib/firestoreService"
+import { auth } from "@/lib/firebase"
+import { signOut } from "firebase/auth"
+import { useAuth } from "@/hooks/useAuth"
+import { useRouter } from "next/navigation"
+import {
   Share2,
   Settings,
   Search,
@@ -15,6 +29,7 @@ import {
   Info,
   MoreVertical,
   RotateCcw,
+  LogOut,
   AudioLines,
   FileCheck,
   FileQuestion,
@@ -245,34 +260,16 @@ function parseTimeline(content: string): TimelineEvent[] {
   return events.slice(0, 12)
 }
 
-function usePersistedState<T>(key: string, initialValue: T) {
-  const [state, setState] = useState<T>(initialValue)
-
-  useEffect(() => {
-    try {
-      const item = window.sessionStorage.getItem(key)
-      if (item) {
-        setState(JSON.parse(item))
-      }
-    } catch (error) {
-      console.warn(`Error reading sessionStorage key "${key}":`, error)
-    }
-  }, [key])
-
-  const setValue = (value: T | ((val: T) => T)) => {
-    try {
-      const valueToStore = value instanceof Function ? value(state) : value
-      setState(valueToStore)
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(key, JSON.stringify(valueToStore))
-      }
-    } catch (error) {
-      console.warn(`Error setting sessionStorage key "${key}":`, error)
-    }
-  }
-
-  return [state, setValue] as const
-}
+const DEFAULT_SOURCES: Source[] = [
+  {
+    id: "demo-1",
+    name: "Sample Physics Notes.txt",
+    content:
+      "Newton's First Law: An object at rest stays at rest and an object in motion stays in motion unless acted upon by an unbalanced force (inertia).\n\nNewton's Second Law: Force equals mass times acceleration (F=ma). The acceleration of an object depends on the net force acting on it and its mass.\n\nNewton's Third Law: For every action, there is an equal and opposite reaction. Forces always occur in pairs.\n\nGravity: The force of attraction between objects with mass. On Earth, gravitational acceleration is approximately 9.8 m/s².\n\nFriction: A force that opposes motion between surfaces in contact. Static friction prevents motion; kinetic friction slows moving objects.\n\nMomentum: The product of an object's mass and velocity (p = mv). In a closed system, total momentum is conserved.",
+    selected: true,
+    type: "txt",
+  },
+]
 
 export default function NotebookLM() {
   const [isLeftOpen, setIsLeftOpen] = useState(true)
@@ -281,54 +278,112 @@ export default function NotebookLM() {
     "studio"
   )
 
-  const [sources, setSources] = usePersistedState<Source[]>(
-    "notebook-sources",
-    [
-      {
-        id: "demo-1",
-        name: "Sample Physics Notes.txt",
-        content:
-          "Newton's First Law: An object at rest stays at rest and an object in motion stays in motion unless acted upon by an unbalanced force (inertia).\n\nNewton's Second Law: Force equals mass times acceleration (F=ma). The acceleration of an object depends on the net force acting on it and its mass.\n\nNewton's Third Law: For every action, there is an equal and opposite reaction. Forces always occur in pairs.\n\nGravity: The force of attraction between objects with mass. On Earth, gravitational acceleration is approximately 9.8 m/s².\n\nFriction: A force that opposes motion between surfaces in contact. Static friction prevents motion; kinetic friction slows moving objects.\n\nMomentum: The product of an object's mass and velocity (p = mv). In a closed system, total momentum is conserved.",
-        selected: true,
-        type: "txt",
-      },
-    ]
-  )
+  // ── Firebase notebook ID ───────────────────────────────────────────────────
+  const notebookId = useRef<string>("")
+  const [isDbLoaded, setIsDbLoaded] = useState(false)
 
-  const [messages, setMessages] = usePersistedState<ChatMessage[]>(
-    "notebook-messages",
-    []
-  )
+  // ── Core state ────────────────────────────────────────────────────────────
+  const [sources, setSources] = useState<Source[]>(DEFAULT_SOURCES)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")
   const [isChatLoading, setIsChatLoading] = useState(false)
   const [chatError, setChatError] = useState("")
 
-  const [notes, setNotes] = usePersistedState<Note[]>("notebook-notes", [])
+  const [notes, setNotes] = useState<Note[]>([])
   const [isGeneratingNote, setIsGeneratingNote] = useState(false)
   const [activeNote, setActiveNote] = useState<Note | null>(null)
 
   const [isUploadingPdf, setIsUploadingPdf] = useState(false)
 
   // Related Sources
-  const [relatedSources, setRelatedSources] = usePersistedState<
-    RelatedSource[]
-  >("notebook-relatedSources", [])
-  const [sourceTopic, setSourceTopic] = usePersistedState(
-    "notebook-sourceTopic",
-    ""
-  )
+  const [relatedSources, setRelatedSources] = useState<RelatedSource[]>([])
+  const [sourceTopic, setSourceTopic] = useState("")
   const [isDiscoveringSources, setIsDiscoveringSources] = useState(false)
 
   // Charts
-  const [chartData, setChartData] = usePersistedState<ChartData[]>(
-    "notebook-chartData",
-    []
-  )
+  const [chartData, setChartData] = useState<ChartData[]>([])
   const [isGeneratingCharts, setIsGeneratingCharts] = useState(false)
-  const [researchSummary, setResearchSummary] = usePersistedState<string>(
-    "notebook-researchSummary",
-    ""
-  )
+  const [researchSummary, setResearchSummary] = useState("")
+
+  // ── isLocalWrite mutex ─────────────────────────────────────────────────────
+  // Set to true right before we write to Firestore so the resulting
+  // onSnapshot callback knows to skip re-setting local state (we already
+  // have the latest value). Cleared shortly after the write completes.
+  const isLocalWriteRef = useRef(false)
+  const localWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const flagLocalWrite = () => {
+    isLocalWriteRef.current = true
+    if (localWriteTimerRef.current) clearTimeout(localWriteTimerRef.current)
+    localWriteTimerRef.current = setTimeout(() => {
+      isLocalWriteRef.current = false
+    }, 1500)
+  }
+
+  // ── Authentication & Protection ──────────────────────────────────────────
+  const { user, loading: authLoading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, authLoading, router])
+
+  // ── Real-time Firestore subscription ──────────────────────────────────────
+  useEffect(() => {
+    if (!user) return
+    notebookId.current = user.uid
+
+    const defaultData: NotebookData = {
+      sources: DEFAULT_SOURCES,
+      messages: [],
+      notes: [],
+      relatedSources: [],
+      sourceTopic: "",
+      chartData: [],
+      researchSummary: "",
+      audioLines: [],
+      isAudioReady: false,
+    }
+
+    const unsubscribe = subscribeToNotebook(
+      notebookId.current,
+      (data) => {
+        // Skip snapshot if it was triggered by our own write
+        if (!isLocalWriteRef.current) {
+          setSources(data.sources.length ? data.sources : DEFAULT_SOURCES)
+          setMessages(data.messages)
+          setNotes(data.notes)
+          setRelatedSources(data.relatedSources)
+          setSourceTopic(data.sourceTopic)
+          setChartData(data.chartData)
+          setResearchSummary(data.researchSummary)
+          setAudioLines(data.audioLines)
+          setIsAudioReady(data.isAudioReady)
+        }
+        // Always mark as loaded on first snapshot
+        setIsDbLoaded(true)
+      },
+      defaultData
+    )
+
+    return () => {
+      unsubscribe()
+      if (localWriteTimerRef.current) clearTimeout(localWriteTimerRef.current)
+    }
+  }, [user])
+
+  const handleLogout = async () => {
+    if (window.confirm("Are you sure you want to log out?")) {
+      try {
+        await signOut(auth)
+        router.push("/login")
+      } catch (err) {
+        console.error("Failed to sign out", err)
+      }
+    }
+  }
 
   // Audio Overview
   const [audioLines, setAudioLines] = useState<
@@ -345,6 +400,40 @@ export default function NotebookLM() {
   const audioTotalSecondsRef = useRef(0)
   const audioElapsedRef = useRef(0)
   const isCancelledRef = useRef(false)
+  const playbackIndexRef = useRef(0)
+
+  // Calculate duration whenever audioLines changes
+  useEffect(() => {
+    if (audioLines.length > 0) {
+      const totalWords = audioLines.reduce(
+        (a, l) => a + l.text.split(/\s+/).length,
+        0
+      )
+      const totalSeconds = Math.round((totalWords / 145) * 60)
+      audioTotalSecondsRef.current = totalSeconds
+      setAudioDuration(totalSeconds)
+    } else {
+      audioTotalSecondsRef.current = 0
+      setAudioDuration(0)
+    }
+  }, [audioLines])
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages, isChatLoading])
+
+  if (authLoading || !user) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-[#f0f4f9] p-4 text-center">
+        <div className="mb-6 h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent shadow-xl shadow-blue-100" />
+        <h2 className="text-xl font-bold text-gray-800">Hang tight</h2>
+        <p className="mt-2 text-sm text-gray-500">Preparing your space...</p>
+      </div>
+    )
+  }
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -359,6 +448,65 @@ export default function NotebookLM() {
     }
   }
 
+  const playAudio = (startIndex = 0) => {
+    if (audioLines.length === 0) return
+
+    isCancelledRef.current = false
+    window.speechSynthesis.cancel()
+    stopAudioTimer()
+
+    const all = window.speechSynthesis.getVoices()
+    const english = all.filter((v) => v.lang.startsWith("en"))
+    const femaleKw = ["samantha", "victoria", "karen", "moira", "tessa", "fiona", "zira", "hazel", "susan", "natasha", "veena", "female", "woman"]
+    const maleKw = ["daniel", "david", "alex", "tom", "fred", "rishi", "mark", "oliver", "george", "male", "man"]
+
+    const samVoice = english.find((v) => femaleKw.some((k) => v.name.toLowerCase().includes(k))) || english[1] || english[0]
+    const alexVoice = english.find((v) => maleKw.some((k) => v.name.toLowerCase().includes(k)) && v !== samVoice) || english.find((v) => v !== samVoice) || english[0]
+
+    const speakNext = (index: number) => {
+      if (isCancelledRef.current || index >= audioLines.length) {
+        if (!isCancelledRef.current) {
+          setIsAudioPlaying(false)
+          stopAudioTimer()
+          setAudioProgress(100)
+          setAudioCurrentTime(audioTotalSecondsRef.current)
+          setCurrentSpeaker("")
+          playbackIndexRef.current = 0
+        }
+        return
+      }
+
+      playbackIndexRef.current = index
+      const ln = audioLines[index]
+      setCurrentSpeaker(ln.speaker)
+      const utt = new SpeechSynthesisUtterance(ln.text)
+      utt.rate = 0.97
+      utt.pitch = ln.speaker === "ALEX" ? 0.92 : 1.18
+      utt.volume = 1
+      const voice = ln.speaker === "ALEX" ? alexVoice : samVoice
+      if (voice) utt.voice = voice
+
+      utt.onend = () => {
+        if (!isCancelledRef.current) speakNext(index + 1)
+      }
+      utt.onerror = () => {
+        if (!isCancelledRef.current) speakNext(index + 1)
+      }
+      window.speechSynthesis.speak(utt)
+    }
+
+    setIsAudioPlaying(true)
+    speakNext(startIndex)
+
+    audioTimerRef.current = setInterval(() => {
+      audioElapsedRef.current += 0.5
+      setAudioCurrentTime(audioElapsedRef.current)
+      setAudioProgress(
+        Math.min((audioElapsedRef.current / audioTotalSecondsRef.current) * 100, 100)
+      )
+    }, 500)
+  }
+
   const generateAudio = async () => {
     if (selectedSources.length === 0) {
       alert("Please select at least one source first.")
@@ -370,6 +518,8 @@ export default function NotebookLM() {
     setAudioCurrentTime(0)
     setAudioDuration(0)
     setCurrentSpeaker("")
+    flagLocalWrite()
+    writeAudio(notebookId.current, [], false).catch(console.error)
     isCancelledRef.current = true
     window.speechSynthesis.cancel()
     stopAudioTimer()
@@ -410,93 +560,15 @@ export default function NotebookLM() {
       )
       const totalSeconds = Math.round((totalWords / 145) * 60)
       setAudioLines(lines)
-      audioTotalSecondsRef.current = totalSeconds
-      audioElapsedRef.current = 0
-      setAudioDuration(totalSeconds)
       setIsAudioReady(true)
-      setIsAudioPlaying(true)
-      // Start two-voice playback
-      isCancelledRef.current = false
-      const all = window.speechSynthesis.getVoices()
-      const english = all.filter((v) => v.lang.startsWith("en"))
-      const femaleKw = [
-        "samantha",
-        "victoria",
-        "karen",
-        "moira",
-        "tessa",
-        "fiona",
-        "zira",
-        "hazel",
-        "susan",
-        "natasha",
-        "veena",
-        "female",
-        "woman",
-      ]
-      const maleKw = [
-        "daniel",
-        "david",
-        "alex",
-        "tom",
-        "fred",
-        "rishi",
-        "mark",
-        "oliver",
-        "george",
-        "male",
-        "man",
-      ]
-      const samVoice =
-        english.find((v) =>
-          femaleKw.some((k) => v.name.toLowerCase().includes(k))
-        ) ||
-        english[1] ||
-        english[0]
-      const alexVoice =
-        english.find(
-          (v) =>
-            maleKw.some((k) => v.name.toLowerCase().includes(k)) &&
-            v !== samVoice
-        ) ||
-        english.find((v) => v !== samVoice) ||
-        english[0]
-      const speakNext = (index: number) => {
-        if (isCancelledRef.current || index >= lines.length) {
-          if (!isCancelledRef.current) {
-            setIsAudioPlaying(false)
-            stopAudioTimer()
-            setAudioProgress(100)
-            setAudioCurrentTime(totalSeconds)
-            setCurrentSpeaker("")
-          }
-          return
-        }
-        const ln = lines[index]
-        setCurrentSpeaker(ln.speaker)
-        const utt = new SpeechSynthesisUtterance(ln.text)
-        utt.rate = 0.97
-        utt.pitch = ln.speaker === "ALEX" ? 0.92 : 1.18
-        utt.volume = 1
-        const voice = ln.speaker === "ALEX" ? alexVoice : samVoice
-        if (voice) utt.voice = voice
-        utt.onend = () => {
-          if (!isCancelledRef.current) speakNext(index + 1)
-        }
-        utt.onerror = () => {
-          if (!isCancelledRef.current) speakNext(index + 1)
-        }
-        window.speechSynthesis.speak(utt)
-      }
-      speakNext(0)
-      stopAudioTimer()
-      audioTimerRef.current = setInterval(() => {
-        audioElapsedRef.current += 0.5
-        setAudioCurrentTime(audioElapsedRef.current)
-        setAudioProgress(
-          Math.min((audioElapsedRef.current / totalSeconds) * 100, 100)
-        )
-      }, 500)
+      audioElapsedRef.current = 0
+      setAudioCurrentTime(0)
+      
+      flagLocalWrite()
+      writeAudio(notebookId.current, lines, true).catch(console.error)
+
+      // Play from scratch
+      playAudio(0)
     } catch (err: any) {
       alert(err.message || "Failed to generate audio.")
     }
@@ -510,18 +582,24 @@ export default function NotebookLM() {
   }
 
   const resumeAudio = () => {
-    window.speechSynthesis.resume()
-    setIsAudioPlaying(true)
-    audioTimerRef.current = setInterval(() => {
-      audioElapsedRef.current += 0.5
-      setAudioCurrentTime(audioElapsedRef.current)
-      setAudioProgress(
-        Math.min(
-          (audioElapsedRef.current / audioTotalSecondsRef.current) * 100,
-          100
+    // If we're truly paused in the browser, resume.
+    // Otherwise, we might have refreshed and lost state, so start from beginning.
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume()
+      setIsAudioPlaying(true)
+      audioTimerRef.current = setInterval(() => {
+        audioElapsedRef.current += 0.5
+        setAudioCurrentTime(audioElapsedRef.current)
+        setAudioProgress(
+          Math.min(
+            (audioElapsedRef.current / audioTotalSecondsRef.current) * 100,
+            100
+          )
         )
-      )
-    }, 500)
+      }, 500)
+    } else {
+      playAudio(playbackIndexRef.current || 0)
+    }
   }
 
   const stopAudio = () => {
@@ -535,13 +613,7 @@ export default function NotebookLM() {
     setCurrentSpeaker("")
   }
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const chatEndRef = useRef<HTMLDivElement>(null)
   const selectedSources = sources.filter((s) => s.selected)
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, isChatLoading])
 
   const sendMessage = async (text?: string) => {
     const content = text || inputValue.trim()
@@ -551,16 +623,20 @@ export default function NotebookLM() {
       role: "user",
       content,
     }
-    setMessages((prev) => [...prev, userMsg])
+    const withUser = [...messages, userMsg]
+    setMessages(withUser)
     setInputValue("")
     setIsChatLoading(true)
     setChatError("")
+    // Optimistically persist user message
+    flagLocalWrite()
+    writeMessages(notebookId.current, withUser).catch(console.error)
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...messages, userMsg].map((m) => ({
+          messages: withUser.map((m) => ({
             role: m.role,
             content: m.content,
           })),
@@ -573,14 +649,15 @@ export default function NotebookLM() {
       const data = await res.json()
       if (!res.ok || data.error)
         throw new Error(data.error || "Failed to get response")
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.content,
-        },
-      ])
+      const assistantMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.content,
+      }
+      const withAssistant = [...withUser, assistantMsg]
+      setMessages(withAssistant)
+      flagLocalWrite()
+      writeMessages(notebookId.current, withAssistant).catch(console.error)
     } catch (err: any) {
       setChatError(err.message || "Something went wrong. Please try again.")
     } finally {
@@ -606,16 +683,17 @@ export default function NotebookLM() {
           })
           const data = await res.json()
           if (data.text) {
-            setSources((prev) => [
-              ...prev,
-              {
-                id: Math.random().toString(36).substring(7),
-                name: file.name,
-                content: data.text,
-                selected: true,
-                type: "pdf",
-              },
-            ])
+            const newSource = {
+              id: Math.random().toString(36).substring(7),
+              name: file.name,
+              content: data.text,
+              selected: true,
+              type: "pdf" as const,
+            }
+            const next = [...sources, newSource]
+            setSources(next)
+            flagLocalWrite()
+            writeSources(notebookId.current, next).catch(console.error)
           } else {
             alert(`Failed to parse PDF: ${data.error}`)
           }
@@ -627,16 +705,17 @@ export default function NotebookLM() {
         const reader = new FileReader()
         reader.onload = (event) => {
           const content = event.target?.result as string
-          setSources((prev) => [
-            ...prev,
-            {
-              id: Math.random().toString(36).substring(7),
-              name: file.name,
-              content,
-              selected: true,
-              type: "txt",
-            },
-          ])
+          const newSource = {
+            id: Math.random().toString(36).substring(7),
+            name: file.name,
+            content,
+            selected: true,
+            type: "txt" as const,
+          }
+          const next = [...sources, newSource]
+          setSources(next)
+          flagLocalWrite()
+          writeSources(notebookId.current, next).catch(console.error)
         }
         reader.readAsText(file)
       }
@@ -673,8 +752,11 @@ export default function NotebookLM() {
           isTimeline,
           timelineData,
         }
-        setNotes((prev) => [newNote, ...prev])
+        const next = [newNote, ...notes]
+        setNotes(next)
         setActiveNote(newNote)
+        flagLocalWrite()
+        writeNotes(notebookId.current, next).catch(console.error)
       } else {
         alert(`Error: ${data.error}`)
       }
@@ -690,10 +772,12 @@ export default function NotebookLM() {
       return
     }
     setIsDiscoveringSources(true)
-    // Clear old cached results immediately so stale data disappears
+    // Optimistically clear stale data
     setRelatedSources([])
     setSourceTopic("")
     setResearchSummary("")
+    flagLocalWrite()
+    writeRelatedSources(notebookId.current, [], "", "").catch(console.error)
     try {
       const res = await fetch("/api/discover-sources", {
         method: "POST",
@@ -709,9 +793,14 @@ export default function NotebookLM() {
       if (data.error) {
         alert(`Search error: ${data.error}`)
       } else if (data.sources) {
-        setRelatedSources(data.sources)
-        setSourceTopic(data.topic || "")
-        setResearchSummary(data.researchSummary || "")
+        const rs = data.sources
+        const topic = data.topic || ""
+        const summary = data.researchSummary || ""
+        setRelatedSources(rs)
+        setSourceTopic(topic)
+        setResearchSummary(summary)
+        flagLocalWrite()
+        writeRelatedSources(notebookId.current, rs, topic, summary).catch(console.error)
       }
     } catch {
       alert("Failed to search. Please check your internet connection.")
@@ -737,18 +826,34 @@ export default function NotebookLM() {
         }),
       })
       const data = await res.json()
-      if (data.charts) setChartData(data.charts)
+      if (data.charts) {
+        setChartData(data.charts)
+        flagLocalWrite()
+        writeChartData(notebookId.current, data.charts).catch(console.error)
+      }
     } catch {
       alert("Failed to generate charts.")
     }
     setIsGeneratingCharts(false)
   }
 
-  const deleteSource = (id: string) =>
-    setSources((prev) => prev.filter((s) => s.id !== id))
+  const deleteSource = (id: string) => {
+    const next = sources.filter((s) => s.id !== id)
+    setSources(next)
+    flagLocalWrite()
+    writeSources(notebookId.current, next).catch(console.error)
+  }
 
   return (
     <div className="flex h-screen flex-col bg-[#f0f4f9] font-sans text-[#1f1f1f]">
+      {/* Firestore loading overlay */}
+      {!isDbLoaded && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#f0f4f9]">
+          <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+          <p className="mt-3 text-sm text-gray-500">Loading your notebook…</p>
+        </div>
+      )}
+
       {/* Note Modal */}
       {activeNote && (
         <div
@@ -832,24 +937,45 @@ export default function NotebookLM() {
               <PanelRightOpen className="h-5 w-5" />
             </Button>
           )}
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
-            size="sm"
-            className="hidden gap-1.5 rounded-full text-sm font-normal sm:flex"
+            size="icon"
+            className="h-9 w-9 rounded-full bg-white text-gray-500 shadow-sm transition-transform hover:scale-110 active:scale-95"
           >
-            <Share2 className="h-4 w-4" /> Share
+            <Share2 className="h-4.5 w-4.5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden gap-1.5 rounded-full text-sm font-normal sm:flex"
-          >
-            <Settings className="h-4 w-4" /> Settings
-          </Button>
-          <Avatar className="ml-1 h-8 w-8">
-            <AvatarImage src="https://github.com/shadcn.png" alt="User" />
-            <AvatarFallback>U</AvatarFallback>
-          </Avatar>
+          <div className="flex items-center gap-2 rounded-full border border-gray-100 bg-white px-2 py-1 shadow-sm transition-all hover:border-gray-200">
+            <div className="flex items-center gap-2 pr-2">
+              <Avatar className="h-7 w-7 ring-2 ring-blue-50 ring-offset-1">
+                <AvatarImage
+                  src={user.photoURL || ""}
+                  alt={user.displayName || "User"}
+                />
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-[10px] font-bold text-white uppercase">
+                  {(user.displayName || user.email || "U").substring(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="hidden flex-col md:flex">
+                <span className="text-[12px] font-bold leading-none text-gray-900">
+                  {user.displayName || "My Notebook"}
+                </span>
+                <span className="text-[9px] font-medium text-gray-400">
+                  Pro Account
+                </span>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              title="Logout"
+              className="h-7 w-7 rounded-full text-gray-400 hover:bg-red-50 hover:text-red-500"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
         </div>
       </header>
 
@@ -930,11 +1056,12 @@ export default function NotebookLM() {
                       <Checkbox
                         id="select-all"
                         checked={sources.every((s) => s.selected)}
-                        onCheckedChange={(checked) =>
-                          setSources((s) =>
-                            s.map((src) => ({ ...src, selected: !!checked }))
-                          )
-                        }
+                        onCheckedChange={(checked) => {
+                          const next = sources.map((src) => ({ ...src, selected: !!checked }))
+                          setSources(next)
+                          flagLocalWrite()
+                          writeSources(notebookId.current, next).catch(console.error)
+                        }}
                         className="h-4 w-4 shrink-0 rounded-[4px] border-gray-300 shadow-none data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600"
                       />
                     </div>
@@ -950,15 +1077,14 @@ export default function NotebookLM() {
                   <div
                     key={s.id}
                     className={`group flex cursor-pointer items-center justify-between gap-2 rounded-xl px-2 py-2.5 transition-colors ${s.selected ? "bg-blue-50/70" : "hover:bg-gray-50"}`}
-                    onClick={() =>
-                      setSources((prev) =>
-                        prev.map((src) =>
-                          src.id === s.id
-                            ? { ...src, selected: !s.selected }
-                            : src
-                        )
+                    onClick={() => {
+                      const next = sources.map((src) =>
+                        src.id === s.id ? { ...src, selected: !s.selected } : src
                       )
-                    }
+                      setSources(next)
+                      flagLocalWrite()
+                      writeSources(notebookId.current, next).catch(console.error)
+                    }}
                   >
                     <div className="flex flex-1 items-center gap-3 overflow-hidden">
                       <div
@@ -992,15 +1118,14 @@ export default function NotebookLM() {
                       </Button>
                       <Checkbox
                         checked={s.selected}
-                        onCheckedChange={(checked) =>
-                          setSources((prev) =>
-                            prev.map((src) =>
-                              src.id === s.id
-                                ? { ...src, selected: !!checked }
-                                : src
-                            )
+                        onCheckedChange={(checked) => {
+                          const next = sources.map((src) =>
+                            src.id === s.id ? { ...src, selected: !!checked } : src
                           )
-                        }
+                          setSources(next)
+                          flagLocalWrite()
+                          writeSources(notebookId.current, next).catch(console.error)
+                        }}
                         className="h-4 w-4 shrink-0 rounded-[4px] border-gray-300 shadow-none data-[state=checked]:border-blue-600 data-[state=checked]:bg-blue-600"
                         onClick={(e) => e.stopPropagation()}
                       />
