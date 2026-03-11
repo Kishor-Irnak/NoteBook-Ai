@@ -57,7 +57,7 @@ ALEX: That is genuinely the most relatable physics explanation I have ever heard
     const prompt = prompts[type] || prompts.summary
 
     const result = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: google("gemini-1.5-flash"),
       system: systemMessage,
       prompt: prompt,
     })

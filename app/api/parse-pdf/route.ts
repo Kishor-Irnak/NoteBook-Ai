@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const base64 = Buffer.from(bytes).toString('base64')
 
     const result = await generateText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-1.5-flash'),
       messages: [
         {
           role: 'user',

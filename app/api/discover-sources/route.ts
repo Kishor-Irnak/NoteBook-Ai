@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
     // Using gemini-2.5-flash as it's the available stable model in this environment
     const result = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: google("gemini-1.5-flash"),
       tools: {
         googleSearch: google.tools.googleSearch({}),
       },
