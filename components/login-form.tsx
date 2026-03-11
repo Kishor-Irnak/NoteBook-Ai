@@ -34,7 +34,7 @@ export function LoginForm({
     setError("")
     try {
       await signInWithEmailAndPassword(auth, email, password)
-      router.push("/")
+      router.push("/notebook")
     } catch (err: unknown) {
       setError((err as Error).message || "Failed to login. Please check your credentials.")
     } finally {

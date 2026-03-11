@@ -41,7 +41,7 @@ export function SignupForm({
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       await updateProfile(userCredential.user, { displayName: name })
-      router.push("/")
+      router.push("/notebook")
     } catch (err: unknown) {
       setError((err as Error).message || "Failed to create account. Please try again.")
     } finally {
