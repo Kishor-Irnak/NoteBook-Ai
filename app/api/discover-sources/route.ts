@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
     // Suggest resources based on AI knowledge (Google Search tool removed)
     const result = await generateText({
-      model: google("gemini-1.5-flash"),
+      model: google("gemini-2.5-flash"),
       prompt: `You are a research assistant. Suggest the best real, high-quality learning resources about the topic in this study material.
       
 STUDY MATERIAL:

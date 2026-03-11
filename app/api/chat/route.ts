@@ -24,7 +24,7 @@ Be concise, accurate, and helpful. Use markdown formatting in your responses.\n\
     }
 
     const result = await generateText({
-      model: google('gemini-1.5-flash'),
+      model: google('gemini-2.5-flash'),
       system: systemMessage,
       messages: messages,
     })
