@@ -64,47 +64,42 @@ export async function POST(req: Request) {
         .join("\n---\n")
     }
 
-    // Using gemini-2.5-flash as it's the available stable model in this environment
+    // Suggest resources based on AI knowledge (Google Search tool removed)
     const result = await generateText({
       model: google("gemini-1.5-flash"),
-      tools: {
-        googleSearch: google.tools.googleSearch({}),
-      },
-      // @ts-ignore
-      maxSteps: 5,
-      prompt: `You are a research assistant. Use Google Search to find the best real, currently-existing learning resources about the topic in this study material.
+      prompt: `You are a research assistant. Suggest the best real, high-quality learning resources about the topic in this study material.
       
 STUDY MATERIAL:
 ${sourcesText}
 
-Search for:
-1. Real YouTube tutorial videos on this topic
-2. High-quality educational websites, articles, and documentation
-3. GitHub repos or online courses
+Suggest:
+1. Real YouTube tutorial videos or channels on this topic
+2. High-quality educational websites like MDN, Documentation, or top articles
+3. GitHub repositories, courses (Coursera/Udemy), or books
 
-After searching, return ONLY a JSON object like this (no markdown, no code fences):
+Return ONLY a JSON object like this (no markdown, no code fences):
 {
   "topic": "Topic name in 3-5 words",
-  "researchSummary": "A concise, Perplexity-style summary (3-4 sentences) that highlights the top 3 most valuable findings or learning paths discovered during this search. Be professional and encouraging.",
+  "researchSummary": "A concise summary (3-4 sentences) that highlights the top learning paths for this topic based on your knowledge.",
   "sources": [
     {
-      "title": "Exact real page or video title from search results",
-      "url": "https://actual-real-url-from-search-results.com",
+      "title": "Exact real page or video title",
+      "url": "https://actual-real-url.com",
       "description": "One sentence about what this covers",
       "type": "youtube OR github OR course OR documentation OR website"
     }
   ]
 }
 
-Include 8-12 real results. Only include URLs from actual search results — never fabricate URLs.`,
+Include 8-12 real, high-quality results. Only include URLs that you are certain exist.`,
     })
 
     const text = result.text.trim()
 
-    // Parse Gemini's JSON response
+    // Parse JSON response
     let topic = "Related Resources"
     let researchSummary = ""
-    let parsedSources: SourceItem[] = []
+    let finalSources: SourceItem[] = []
 
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/)
@@ -112,32 +107,10 @@ Include 8-12 real results. Only include URLs from actual search results — neve
         const parsed = JSON.parse(jsonMatch[0])
         topic = parsed.topic || topic
         researchSummary = parsed.researchSummary || ""
-        parsedSources = (parsed.sources || []) as SourceItem[]
+        finalSources = (parsed.sources || []) as SourceItem[]
       }
     } catch {
-      // ignore parse errors — return empty
-    }
-
-    // Also try to extract real URLs from the grounding metadata
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const meta = (result as any).experimental_providerMetadata?.google
-    const groundingChunks: Array<{ web?: { uri: string; title?: string } }> =
-      meta?.groundingMetadata?.groundingChunks || []
-
-    const groundedDomains = new Set<string>()
-    for (const chunk of groundingChunks) {
-      const d = chunk.web?.uri ? extractDomain(chunk.web.uri) : null
-      if (d) groundedDomains.add(d)
-    }
-
-    // Filter to keep only sources whose domain appeared in actual Google search results
-    let finalSources = parsedSources
-    if (groundedDomains.size > 0) {
-      const filtered = parsedSources.filter((s) => {
-        const d = extractDomain(s.url)
-        return d && groundedDomains.has(d)
-      })
-      if (filtered.length >= 3) finalSources = filtered
+      // ignore parse errors
     }
 
     // Enrich each source with derived metadata
