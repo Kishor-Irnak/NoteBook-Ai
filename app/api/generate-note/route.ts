@@ -65,6 +65,25 @@ ALEX: That is genuinely the most relatable physics explanation I have ever heard
     return NextResponse.json({ text: result.text })
   } catch (error: any) {
     console.error("Generate note error:", error)
+
+    // Detect Gemini spending cap / quota exhaustion
+    const isQuotaError =
+      error?.statusCode === 429 ||
+      error?.lastError?.statusCode === 429 ||
+      error?.message?.includes('spending cap') ||
+      error?.message?.includes('RESOURCE_EXHAUSTED')
+
+    if (isQuotaError) {
+      return NextResponse.json(
+        {
+          error:
+            'The AI service has reached its monthly usage limit. Please try again later or contact the administrator to increase the spending cap.',
+          code: 'QUOTA_EXCEEDED',
+        },
+        { status: 429 }
+      )
+    }
+
     return NextResponse.json(
       { error: error.message || "Unknown error" },
       { status: 500 }

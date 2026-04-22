@@ -32,6 +32,25 @@ Be concise, accurate, and helpful. Use markdown formatting in your responses.\n\
     return NextResponse.json({ content: result.text })
   } catch (error: any) {
     console.error('Chat error:', error)
+
+    // Detect Gemini spending cap / quota exhaustion
+    const isQuotaError =
+      error?.statusCode === 429 ||
+      error?.lastError?.statusCode === 429 ||
+      error?.message?.includes('spending cap') ||
+      error?.message?.includes('RESOURCE_EXHAUSTED')
+
+    if (isQuotaError) {
+      return NextResponse.json(
+        {
+          error:
+            'The AI service has reached its monthly usage limit. Please try again later or contact the administrator to increase the spending cap.',
+          code: 'QUOTA_EXCEEDED',
+        },
+        { status: 429 }
+      )
+    }
+
     return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 })
   }
 }
