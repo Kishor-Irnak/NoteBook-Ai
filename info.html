@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notebook AI - Project Overview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        bg: '#F2EFE9',
+                        fg: '#1A261D',
+                        accent: '#C9E265',
+                        primary: '#FF6B4A',
+                        secondary: '#9D8BB5',
+                        tertiary: '#3D6B4F'
+                    },
+                    boxShadow: {
+                        'hard': '4px 4px 0px 0px rgba(26, 38, 29, 1)',
+                        'hard-lg': '8px 8px 0px 0px rgba(26, 38, 29, 1)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: theme('colors.bg');
+            color: theme('colors.fg');
+        }
+        .bg-noise {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.05;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+        .card {
+            background-color: white;
+            border: 2px solid theme('colors.fg');
+            border-radius: 1rem;
+            box-shadow: theme('boxShadow.hard');
+            transition: all 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: theme('boxShadow.hard-lg');
+        }
+        
+        /* Flowchart animation styles */
+        .flow-line {
+            stroke-dasharray: 10;
+            animation: dash 20s linear infinite;
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -1000;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen relative font-sans overflow-x-hidden">
+    <div class="bg-noise"></div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full bg-bg/90 backdrop-blur-md z-40 border-b-2 border-fg">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="font-black text-2xl tracking-tighter flex items-center gap-2">
+                <div class="w-8 h-8 bg-accent border-2 border-fg flex items-center justify-center rounded-lg shadow-[2px_2px_0px_0px_rgba(26,38,29,1)]">
+                    <i data-lucide="brain" class="w-5 h-5"></i>
+                </div>
+                Notebook AI
+            </div>
+            <div class="hidden md:flex gap-6 font-bold text-sm">
+                <a href="#overview" class="hover:text-primary transition-colors">Overview</a>
+                <a href="#how-it-works" class="hover:text-primary transition-colors">How It Works</a>
+                <a href="#use-cases" class="hover:text-primary transition-colors">Use Cases</a>
+                <a href="#future-scope" class="hover:text-primary transition-colors">Future Scope</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header id="overview" class="pt-32 pb-20 px-6 relative">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-12">
+            <div class="flex-1 space-y-6 relative z-10">
+                <div class="inline-block bg-accent text-fg font-bold px-3 py-1 rounded border-2 border-fg shadow-[2px_2px_0px_0px_rgba(26,38,29,1)] text-sm mb-2 transform -rotate-2">
+                    PROJECT PRESENTATION
+                </div>
+                <h1 class="text-5xl md:text-7xl font-black tracking-tighter leading-[0.9]">
+                    Amplifying <br />
+                    <span class="text-primary font-serif italic">Intelligence.</span>
+                </h1>
+                <p class="text-xl font-medium opacity-80 max-w-lg">
+                    Notebook AI is a personalized research assistant that transforms static documents into dynamic, interactive knowledge bases using Next-Gen AI.
+                </p>
+                <div class="flex gap-4 pt-4">
+                    <a href="#how-it-works" class="bg-fg text-bg px-6 py-3 rounded-full font-bold flex items-center gap-2 hover:bg-primary transition-colors">
+                        Explore Architecture <i data-lucide="arrow-down" class="w-4 h-4"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="flex-1 relative">
+                <div class="absolute inset-0 bg-tertiary rounded-3xl transform rotate-6 scale-105 border-4 border-fg shadow-hard opacity-20"></div>
+                <div class="card p-8 relative z-10 bg-white">
+                    <h3 class="font-bold text-2xl mb-4 border-b-2 border-fg pb-2">Core Features</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-start gap-3">
+                            <div class="mt-1 bg-accent p-1.5 rounded-md border-2 border-fg"><i data-lucide="message-square" class="w-4 h-4"></i></div>
+                            <div>
+                                <strong class="block">Contextual Chat</strong>
+                                <span class="text-sm opacity-70">Ask questions and get answers grounded purely in your uploaded sources.</span>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="mt-1 bg-primary text-white p-1.5 rounded-md border-2 border-fg"><i data-lucide="audio-lines" class="w-4 h-4"></i></div>
+                            <div>
+                                <strong class="block">Audio Podcast Generation</strong>
+                                <span class="text-sm opacity-70">Convert complex texts into engaging, two-host podcast conversations.</span>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <div class="mt-1 bg-secondary text-white p-1.5 rounded-md border-2 border-fg"><i data-lucide="file-text" class="w-4 h-4"></i></div>
+                            <div>
+                                <strong class="block">Smart Artifacts</strong>
+                                <span class="text-sm opacity-70">Generate Study Guides, Timelines, FAQs, and Briefing Docs instantly.</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- How it Works (API & Flow) -->
+    <section id="how-it-works" class="py-20 px-6 bg-tertiary text-white border-y-4 border-fg relative overflow-hidden">
+        <div class="max-w-6xl mx-auto relative z-10">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl md:text-6xl font-black mb-4">How It Works <span class="text-accent font-serif italic">Under the Hood</span></h2>
+                <p class="text-lg opacity-80 max-w-2xl mx-auto">A simplified look at how the frontend, backend, and Gemini AI communicate to deliver intelligent answers.</p>
+            </div>
+
+            <!-- Graphical API Flow Representation -->
+            <div class="relative bg-bg text-fg rounded-3xl p-8 border-4 border-fg shadow-hard-lg max-w-5xl mx-auto">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center relative">
+                    
+                    <!-- SVG Connecting Lines (Visible on md+) -->
+                    <svg class="hidden md:block absolute top-1/2 left-[16.66%] w-[66.66%] h-24 -translate-y-1/2 -z-0 pointer-events-none" preserveAspectRatio="none">
+                        <path d="M 0 48 L 100% 48" stroke="#1A261D" stroke-width="4" stroke-dasharray="10 10" class="flow-line" fill="none"/>
+                        <!-- Arrows -->
+                        <polygon points="30%,40 35%,48 30%,56" fill="#1A261D"/>
+                        <polygon points="80%,40 85%,48 80%,56" fill="#1A261D"/>
+                    </svg>
+
+                    <!-- Step 1: User & Frontend -->
+                    <div class="card p-6 relative z-10 flex flex-col items-center">
+                        <div class="w-16 h-16 bg-blue-100 border-2 border-fg rounded-full flex items-center justify-center mb-4">
+                            <i data-lucide="laptop" class="w-8 h-8 text-blue-600"></i>
+                        </div>
+                        <h3 class="font-bold text-xl mb-2">1. The Interface</h3>
+                        <p class="text-sm opacity-80 mb-4 text-left">
+                            The user uploads documents (PDFs, text). The content is extracted and stored. The user then types a prompt like: <br/> <strong class="bg-blue-50 text-blue-800 px-1 mt-2 inline-block">"Summarize this"</strong>
+                        </p>
+                    </div>
+
+                    <!-- Step 2: Next.js Backend API -->
+                    <div class="card p-6 relative z-10 flex flex-col items-center transform md:-translate-y-6">
+                        <div class="w-16 h-16 bg-accent border-2 border-fg rounded-full flex items-center justify-center mb-4">
+                            <i data-lucide="server" class="w-8 h-8 text-fg"></i>
+                        </div>
+                        <h3 class="font-bold text-xl mb-2">2. The API Route</h3>
+                        <p class="text-sm opacity-80 mb-4 text-left">
+                            The Next.js backend (e.g., <code>/api/chat</code>) receives the prompt <strong>plus the full text of the uploaded documents</strong>. It bundles them into a structured request.
+                        </p>
+                        <div class="text-xs bg-gray-100 p-2 rounded border border-fg w-full text-left font-mono overflow-hidden">
+                            {<br>
+                            &nbsp;"model": "gemini-1.5-flash",<br>
+                            &nbsp;"prompt": "...",<br>
+                            &nbsp;"sources": [...]<br>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Google Gemini API -->
+                    <div class="card p-6 relative z-10 flex flex-col items-center">
+                        <div class="w-16 h-16 bg-primary border-2 border-fg rounded-full flex items-center justify-center mb-4">
+                            <i data-lucide="sparkles" class="w-8 h-8 text-white"></i>
+                        </div>
+                        <h3 class="font-bold text-xl mb-2">3. Gemini AI</h3>
+                        <p class="text-sm opacity-80 mb-4 text-left">
+                            Google's Gemini model processes the massive context window, analyzes the source texts, and generates an accurate, grounded response without hallucinating.
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- Simple Explanation Text -->
+                <div class="mt-12 bg-white p-6 rounded-xl border-2 border-fg">
+                    <h4 class="font-bold text-xl flex items-center gap-2 mb-3"><i data-lucide="info" class="text-primary"></i> In Simple Terms</h4>
+                    <p class="text-fg/80 leading-relaxed mb-4">
+                        Think of the AI like an incredibly smart student taking an open-book exam. 
+                        When you upload a document, you are giving the AI the "book". When you ask a question, our system takes your question, grabs the book, and hands both to the AI. 
+                        The AI reads the book, finds the exact answer, and sends it back to you. This is technically known as <strong>RAG (Retrieval-Augmented Generation)</strong>, though our system currently uses a direct context-stuffing approach for extreme accuracy on smaller documents.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Technology & Cloud Architecture -->
+    <section id="tech-stack" class="py-20 px-6 bg-[#1A261D] text-[#F2EFE9] relative border-t-4 border-fg overflow-hidden">
+        <div class="absolute top-0 right-0 w-64 h-64 bg-primary rounded-full mix-blend-multiply filter blur-[100px] opacity-20"></div>
+        <div class="absolute bottom-0 left-0 w-64 h-64 bg-accent rounded-full mix-blend-multiply filter blur-[100px] opacity-20"></div>
+        
+        <div class="max-w-6xl mx-auto relative z-10">
+            <h2 class="text-4xl md:text-5xl font-black mb-4 text-center">Technology <span class="text-secondary font-serif italic">& Cloud</span></h2>
+            <p class="text-center opacity-80 mb-12 max-w-2xl mx-auto">From the buttons you click to the servers that run them, here is how Notebook AI is built.</p>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                
+                <!-- The Cloud Explained -->
+                <div class="space-y-6">
+                    <h3 class="text-2xl font-bold border-b-2 border-white/20 pb-2 flex items-center gap-2">
+                        <i data-lucide="cloud" class="text-primary"></i> The Cloud Architecture
+                    </h3>
+                    
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-colors">
+                        <h4 class="text-accent font-bold mb-2 flex items-center gap-2"><i data-lucide="battery-low" class="w-4 h-4"></i> Basic Concept</h4>
+                        <p class="text-sm opacity-80 leading-relaxed">
+                            What is "The Cloud"? It simply means that your notes, uploaded PDFs, and chat history are not stored on your computer's hard drive. Instead, they are securely saved on massive computer servers operated by companies like Google. This allows you to log in from your phone, laptop, or a library computer and instantly see all your work exactly as you left it.
+                        </p>
+                    </div>
+
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-colors">
+                        <h4 class="text-accent font-bold mb-2 flex items-center gap-2"><i data-lucide="battery-medium" class="w-4 h-4"></i> Intermediate: Firebase Realtime Sync</h4>
+                        <p class="text-sm opacity-80 leading-relaxed">
+                            We use <strong>Google Firebase Firestore</strong> as our cloud database. It is a NoSQL database that pushes updates in real-time. When you send a message to the AI, it saves to Firestore instantly. If you have the app open on two different devices, the new message will magically appear on both screens at the exact same time without needing to refresh the page.
+                        </p>
+                    </div>
+
+                    <div class="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-colors">
+                        <h4 class="text-accent font-bold mb-2 flex items-center gap-2"><i data-lucide="battery-full" class="w-4 h-4"></i> Advanced: Serverless Computing</h4>
+                        <p class="text-sm opacity-80 leading-relaxed">
+                            Instead of paying for a server that runs 24/7, we use <strong>Serverless API Routes</strong> via Next.js and Vercel. When you hit "Generate Note", a cloud function wakes up in milliseconds, processes your request securely (protecting API keys from hackers), communicates with the Gemini AI, sends the result back to your browser, and then immediately shuts down. This architecture is infinitely scalable and highly cost-efficient.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- The Tech Stack -->
+                <div class="space-y-6">
+                    <h3 class="text-2xl font-bold border-b-2 border-white/20 pb-2 flex items-center gap-2">
+                        <i data-lucide="code-2" class="text-primary"></i> The Tech Stack
+                    </h3>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Frontend -->
+                        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+                            <i data-lucide="layout" class="w-6 h-6 text-accent mb-3"></i>
+                            <h4 class="font-bold mb-1">Frontend UI</h4>
+                            <ul class="text-sm opacity-80 space-y-1 list-disc list-inside">
+                                <li>Next.js (React Framework)</li>
+                                <li>Tailwind CSS (Styling)</li>
+                                <li>Lucide (Icons)</li>
+                                <li>Recharts (Data Visualization)</li>
+                            </ul>
+                        </div>
+
+                        <!-- Backend -->
+                        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+                            <i data-lucide="server-cog" class="w-6 h-6 text-blue-400 mb-3"></i>
+                            <h4 class="font-bold mb-1">Backend & API</h4>
+                            <ul class="text-sm opacity-80 space-y-1 list-disc list-inside">
+                                <li>Next.js API Routes</li>
+                                <li>Vercel AI SDK</li>
+                                <li>PDF Parse (Text Extraction)</li>
+                            </ul>
+                        </div>
+
+                        <!-- AI Model -->
+                        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+                            <i data-lucide="sparkles" class="w-6 h-6 text-primary mb-3"></i>
+                            <h4 class="font-bold mb-1">Artificial Intelligence</h4>
+                            <ul class="text-sm opacity-80 space-y-1 list-disc list-inside">
+                                <li>Google Gemini 1.5 Pro</li>
+                                <li>Google Gemini 1.5 Flash</li>
+                                <li>Web Speech API (Audio)</li>
+                            </ul>
+                        </div>
+
+                        <!-- Database & Auth -->
+                        <div class="bg-white/5 border border-white/10 rounded-xl p-5">
+                            <i data-lucide="database" class="w-6 h-6 text-secondary mb-3"></i>
+                            <h4 class="font-bold mb-1">Database & Security</h4>
+                            <ul class="text-sm opacity-80 space-y-1 list-disc list-inside">
+                                <li>Firebase Authentication</li>
+                                <li>Firestore (NoSQL Database)</li>
+                                <li>Cloud Security Rules</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 bg-accent text-fg p-4 rounded-xl font-medium text-sm flex items-start gap-3">
+                        <i data-lucide="zap" class="w-5 h-5 shrink-0 mt-0.5"></i>
+                        <p><strong>Why this stack?</strong> React + Tailwind allows for rapid UI development with extreme customizability. Next.js unifies the frontend and backend into a single repository. Firebase removes the headache of managing databases and user authentication, letting us focus entirely on the core AI features powered by Google's Gemini.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Use Cases -->
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-black mb-12 text-center">Who is this for? <span class="text-secondary font-serif italic">Use Cases</span></h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Card 1 -->
+                <div class="card p-6 flex flex-col h-full bg-[#f8f9fa]">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center border-2 border-fg mb-4">
+                        <i data-lucide="graduation-cap"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Students</h3>
+                    <p class="text-sm opacity-75 flex-1">Upload semester syllabus, lecture transcripts, and PDF textbooks. Instantly generate study guides, flashcards, and timelines for exam prep.</p>
+                </div>
+                <!-- Card 2 -->
+                <div class="card p-6 flex flex-col h-full bg-[#f8f9fa]">
+                    <div class="w-12 h-12 bg-green-100 text-green-600 rounded-lg flex items-center justify-center border-2 border-fg mb-4">
+                        <i data-lucide="microscope"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Researchers</h3>
+                    <p class="text-sm opacity-75 flex-1">Parse dense research papers and academic journals. Ask specific questions across multiple papers simultaneously to find correlations faster.</p>
+                </div>
+                <!-- Card 3 -->
+                <div class="card p-6 flex flex-col h-full bg-[#f8f9fa]">
+                    <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center border-2 border-fg mb-4">
+                        <i data-lucide="briefcase"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Professionals</h3>
+                    <p class="text-sm opacity-75 flex-1">Upload meeting transcripts, legal contracts, or market research reports to instantly generate Executive Briefing Docs and extract key action items.</p>
+                </div>
+                <!-- Card 4 -->
+                <div class="card p-6 flex flex-col h-full bg-[#f8f9fa]">
+                    <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center border-2 border-fg mb-4">
+                        <i data-lucide="headphones"></i>
+                    </div>
+                    <h3 class="font-bold text-xl mb-2">Auditory Learners</h3>
+                    <p class="text-sm opacity-75 flex-1">Don't want to read 50 pages? Use the Audio Overview feature to generate a casual, engaging 2-person podcast discussing the core topics of your documents.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Future Scope -->
+    <section id="future-scope" class="py-20 px-6 bg-fg text-bg relative border-t-4 border-fg">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex flex-col md:flex-row gap-12 items-center">
+                <div class="flex-1">
+                    <h2 class="text-4xl md:text-5xl font-black mb-6">The Future <br/><span class="text-accent font-serif italic">Roadmap</span></h2>
+                    <p class="text-lg opacity-80 mb-8 leading-relaxed">
+                        Notebook AI is currently in version 1.0. The architecture is designed to scale into a comprehensive, collaborative learning environment. Here is where the platform is heading next.
+                    </p>
+                </div>
+                <div class="flex-1 w-full">
+                    <div class="space-y-4">
+                        
+                        <div class="bg-white/5 border border-white/20 p-4 rounded-xl flex items-center gap-4 hover:bg-white/10 transition">
+                            <div class="bg-accent text-fg p-2 rounded-lg"><i data-lucide="database"></i></div>
+                            <div>
+                                <h4 class="font-bold text-lg text-accent">Vector Embeddings (RAG 2.0)</h4>
+                                <p class="text-sm opacity-70">Instead of loading entire documents into context, the system will use vector databases (like Pinecone) to search and retrieve only relevant chunks, allowing for unlimited document sizes.</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white/5 border border-white/20 p-4 rounded-xl flex items-center gap-4 hover:bg-white/10 transition">
+                            <div class="bg-primary text-white p-2 rounded-lg"><i data-lucide="users"></i></div>
+                            <div>
+                                <h4 class="font-bold text-lg text-primary">Real-time Collaboration</h4>
+                                <p class="text-sm opacity-70">Multiplayer notebooks where study groups or teams can upload shared sources, chat with the AI together, and leave comments on AI-generated notes.</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white/5 border border-white/20 p-4 rounded-xl flex items-center gap-4 hover:bg-white/10 transition">
+                            <div class="bg-secondary text-white p-2 rounded-lg"><i data-lucide="image"></i></div>
+                            <div>
+                                <h4 class="font-bold text-lg text-secondary">Multimodal Processing</h4>
+                                <p class="text-sm opacity-70">Support for uploading images, handwritten notes, and charts. Utilizing Gemini's vision capabilities to understand and synthesize visual data alongside text.</p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-bg py-8 text-center border-t-2 border-fg font-bold text-sm">
+        <p>Notebook AI &copy; 2024 - Built for the future of learning.</p>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
